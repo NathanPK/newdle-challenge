@@ -1,0 +1,44 @@
+# Docker-specific configuration
+micronaut:
+  application:
+    name: ai-monitor-api
+  server:
+    port: 8080
+    host: 0.0.0.0  # Important: bind to all interfaces in container
+    cors:
+      enabled: true
+  security:
+    authentication: bearer
+    token:
+      jwt:
+        signatures:
+          secret:
+            generator:
+              secret: "${JWT_SECRET:docker-dev-secret-change-in-production}"
+    intercept-url-map:
+      - pattern: /hello
+        http-method: GET
+        access:
+          - isAnonymous()
+
+jpa:
+  default:
+    properties:
+      hibernate:
+        hbm2ddl:
+          auto: create-drop
+        show_sql: false
+
+logger:
+  levels:
+    com.aimonitor: INFO
+    io.micronaut.http: INFO
+    root: INFO
+
+endpoints:
+  health:
+    enabled: true
+    sensitive: false
+  info:
+    enabled: true
+    sensitive: false

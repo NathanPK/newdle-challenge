@@ -1,0 +1,186 @@
+plugins {
+    id("org.jetbrains.kotlin.jvm") version "1.9.22"
+    id("org.jetbrains.kotlin.plugin.allopen") version "1.9.22"
+    id("com.google.devtools.ksp") version "1.9.22-1.0.17"
+    id("io.micronaut.application") version "4.2.1"
+    id("io.micronaut.test-resources") version "4.2.1"
+    id("io.micronaut.aot") version "4.2.1"
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+}
+
+version = "0.1"
+group = "aimonitor.micronaut"
+
+kotlinVersion = project.properties.get("kotlinVersion")
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("io.micronaut:micronaut-http-client")
+    implementation("io.micronaut:micronaut-http-server-netty")
+    implementation("io.micronaut:micronaut-jackson-databind")
+    implementation("io.micronaut.kotlin:micronaut-kotlin-runtime")
+    implementation("io.micronaut.sql:micronaut-jdbc-hikari")
+    runtimeOnly("org.postgresql:postgresql")
+    implementation("io.micronaut.security:micronaut-security-jwt")
+    implementation("io.micronaut.security:micronaut-security")
+    implementation("io.micronaut.validation:micronaut-validation:4.8.1")
+    implementation("io.micronaut.reactor:micronaut-reactor")
+    implementation("io.projectreactor:reactor-core")
+    implementation("ch.qos.logback:logback-classic")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}")
+    ksp("io.micronaut:micronaut-http-validation")
+    ksp("io.micronaut.data:micronaut-data-processor")
+    ksp("io.micronaut.security:micronaut-security-annotations")
+    testImplementation("io.micronaut:micronaut-http-client")
+    testImplementation("io.micronaut.test:micronaut-test-junit5")
+    testImplementation("org.junit.jupiter:junit-jupiter-api")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine")
+    testImplementation("org.mockito:mockito-core")
+    testImplementation("io.mockk:mockk:1.13.8")
+    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation("org.testcontainers:postgresql")
+    runtimeOnly("org.yaml:snakeyaml")
+}
+
+application {
+    mainClass.set("aimonitor.micronaut.ApplicationKt")
+}
+
+java {
+    sourceCompatibility = JavaVersion.toVersion("21")
+}
+
+tasks {
+    compileKotlin {
+        kotlinOptions {
+            jvmTarget = "21"
+        }
+    }
+    compileTestKotlin {
+        kotlinOptions {
+            jvmTarget = "21"
+        }
+    }
+}
+
+tasks.named('build') {
+    dependsOn tasks.named('shadowJar')
+}
+
+graalvmNative.toolchainDetection.set(false)
+
+micronaut {
+    runtime("netty")
+    testRuntime("junit5")
+    processing {
+        incremental(true)
+        annotations("aimonitor.*")
+    }
+    aot {
+        optimizeServiceLoading.set(false)
+        convertYamlToJava.set(false)
+        precomputeOperations.set(true)
+        cacheEnvironment.set(true)
+        optimizeClassLoading.set(true)
+        deduceEnvironment.set(true)
+        optimizeNetty.set(true)
+    }
+}
+
+def dockerImageName = "aimonitor-api:latest"
+def containerName = "aimonitor-dev"
+
+tasks.register('buildDockerImage', Exec) {
+    group = 'docker'
+    description = 'Build Docker image for the application'
+    dependsOn build
+    commandLine 'docker', 'build', '-f', 'docker/Dockerfile', '-t', dockerImageName, '.'
+    doFirst {
+        println "Building Docker image: $dockerImageName"
+    }
+}
+
+tasks.register('stopContainer', Exec) {
+    group = 'docker'
+    description = 'Stop and remove existing container'
+    commandLine 'docker', 'rm', '-f', containerName
+    ignoreExitValue = true
+    doFirst {
+        println "Stopping and removing container: $containerName"
+    }
+}
+
+tasks.register('runDocker', Exec) {
+    group = 'docker'
+    description = 'Run application in Docker container'
+    dependsOn stopContainer, buildDockerImage
+    commandLine 'docker', 'run',
+            '--name', containerName,
+            '-p', '8080:8080',
+            '-e', 'MICRONAUT_ENVIRONMENTS=docker',
+            '--rm',
+            dockerImageName
+    doFirst {
+        println "Starting container: $containerName"
+        println "Application will be available at: http://localhost:8080"
+        println "Press Ctrl+C to stop the container"
+    }
+}
+
+tasks.register('runDockerDetached', Exec) {
+    group = 'docker'
+    description = 'Run application in Docker container (detached mode)'
+    dependsOn stopContainer, buildDockerImage
+    commandLine 'docker', 'run',
+            '--name', containerName,
+            '-p', '8080:8080',
+            '-e', 'MICRONAUT_ENVIRONMENTS=docker',
+            '-d',
+            dockerImageName
+    doFirst {
+        println "Starting container in detached mode: $containerName"
+        println "Application will be available at: http://localhost:8080"
+    }
+    doLast {
+        println "Container is running in background"
+        println "View logs with: docker logs -f $containerName"
+        println "Stop with: docker stop $containerName"
+    }
+}
+
+tasks.register('runDockerCompose', Exec) {
+    group = 'docker'
+    description = 'Run full stack with docker-compose'
+    commandLine 'docker-compose', 'up', '--build', '-d'
+    doFirst {
+        println "Starting full stack with docker-compose..."
+    }
+    doLast {
+        println "Full stack is running:"
+        println "- API: http://localhost:8080"
+        println "- Database: localhost:5432"
+        println "- Redis: localhost:6379"
+        println "Stop with: docker-compose down"
+    }
+}
+
+tasks.register('dockerLogs', Exec) {
+    group = 'docker'
+    description = 'View container logs'
+    commandLine 'docker', 'logs', '-f', containerName
+}
+
+tasks.register('dockerShell', Exec) {
+    group = 'docker'
+    description = 'Open shell in running container'
+    commandLine 'docker', 'exec', '-it', containerName, '/bin/sh'
+}
+
+run {
+    dependsOn runDocker
+}

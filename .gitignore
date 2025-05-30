@@ -1,0 +1,25 @@
+# Gradle build output
+/build/
+/**/build/
+
+# Gradle wrapper files
+.gradle/
+/gradle/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+out/
+
+# OS-specific
+.DS_Store
+
+# Logs
+*.log
+
+# Kotlin/Java
+*.class
+
+# Generated files
+generated/
