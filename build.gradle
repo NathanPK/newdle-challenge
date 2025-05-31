@@ -29,13 +29,16 @@ dependencies {
     implementation("io.micronaut.reactor:micronaut-reactor")
     implementation("io.projectreactor:reactor-core")
     implementation("ch.qos.logback:logback-classic")
+    implementation("io.github.microutils:kotlin-logging-jvm:3.0.5")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     implementation("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}")
+    implementation("io.micronaut.kafka:micronaut-kafka")
     ksp("io.micronaut:micronaut-http-validation")
     ksp("io.micronaut.data:micronaut-data-processor")
     ksp("io.micronaut.security:micronaut-security-annotations")
+    testImplementation("io.kotest:kotest-assertions-core:5.8.1")
     testImplementation("io.micronaut:micronaut-http-client")
     testImplementation("io.micronaut.test:micronaut-test-junit5")
     testImplementation("org.junit.jupiter:junit-jupiter-api")
@@ -92,6 +95,29 @@ micronaut {
     }
 }
 
+//sourceSets {
+//    integrationTest {
+//        kotlin.srcDir("src/integrationTest/kotlin")
+//        resources.srcDir("src/integrationTest/resources")
+//        compileClasspath += sourceSets.main.get().output + configurations.testRuntimeClasspath
+//        runtimeClasspath += output + compileClasspath
+//    }
+//}
+//
+//configurations {
+//    integrationTestImplementation.extendsFrom(testImplementation)
+//    integrationTestRuntimeOnly.extendsFrom(testRuntimeOnly)
+//}
+//
+//tasks.register<Test>("integrationTest") {
+//    description = "Runs integration tests."
+//    group = "verification"
+//    testClassesDirs = sourceSets.integrationTest.get().output.classesDirs
+//    classpath = sourceSets.integrationTest.get().runtimeClasspath
+//    shouldRunAfter("test")
+//    useJUnitPlatform()
+//}
+
 def dockerImageName = "aimonitor-api:latest"
 def containerName = "aimonitor-dev"
 
@@ -99,7 +125,7 @@ tasks.register('buildDockerImage', Exec) {
     group = 'docker'
     description = 'Build Docker image for the application'
     dependsOn build
-    commandLine 'docker', 'build', '-f', 'docker/Dockerfile', '-t', dockerImageName, '.'
+    commandLine 'docker', 'build', '-f', 'Dockerfile', '-t', dockerImageName, '.'
     doFirst {
         println "Building Docker image: $dockerImageName"
     }
@@ -121,13 +147,13 @@ tasks.register('runDocker', Exec) {
     dependsOn stopContainer, buildDockerImage
     commandLine 'docker', 'run',
             '--name', containerName,
-            '-p', '8080:8080',
+            '-p', '8082:8082',
             '-e', 'MICRONAUT_ENVIRONMENTS=docker',
             '--rm',
             dockerImageName
     doFirst {
         println "Starting container: $containerName"
-        println "Application will be available at: http://localhost:8080"
+        println "Application will be available at: http://localhost:8082"
         println "Press Ctrl+C to stop the container"
     }
 }
@@ -138,13 +164,13 @@ tasks.register('runDockerDetached', Exec) {
     dependsOn stopContainer, buildDockerImage
     commandLine 'docker', 'run',
             '--name', containerName,
-            '-p', '8080:8080',
+            '-p', '8082:8082',
             '-e', 'MICRONAUT_ENVIRONMENTS=docker',
             '-d',
             dockerImageName
     doFirst {
         println "Starting container in detached mode: $containerName"
-        println "Application will be available at: http://localhost:8080"
+        println "Application will be available at: http://localhost:8082"
     }
     doLast {
         println "Container is running in background"
@@ -155,17 +181,18 @@ tasks.register('runDockerDetached', Exec) {
 
 tasks.register('runDockerCompose', Exec) {
     group = 'docker'
-    description = 'Run full stack with docker-compose'
-    commandLine 'docker-compose', 'up', '--build', '-d'
+    description = 'Run full stack with compose.yml'
+    dependsOn stopContainer, buildDockerImage
+    commandLine 'docker-compose', '-f', 'compose.yml', 'up', '--build', '-d'
     doFirst {
-        println "Starting full stack with docker-compose..."
+        println "Starting full stack with compose.yml..."
     }
     doLast {
         println "Full stack is running:"
-        println "- API: http://localhost:8080"
+        println "- API: http://localhost:8082"
         println "- Database: localhost:5432"
         println "- Redis: localhost:6379"
-        println "Stop with: docker-compose down"
+        println "Stop with: compose.yml down"
     }
 }
 
@@ -181,6 +208,22 @@ tasks.register('dockerShell', Exec) {
     commandLine 'docker', 'exec', '-it', containerName, '/bin/sh'
 }
 
+tasks.register("runWithCompose") {
+    doLast {
+        Runtime.getRuntime().addShutdownHook(Thread {
+            "docker-compose -f compose.yml down".runCommand()
+        })
+        "docker-compose -f compose.yml up".runCommand()
+    }
+}
+
+def runCommand(String command) {
+    def process = command.execute()
+    process.in.eachLine { println it }
+    process.err.eachLine { System.err.println it }
+    process.waitFor()
+}
+
 run {
-    dependsOn runDocker
+    dependsOn runDockerCompose
 }

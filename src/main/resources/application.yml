@@ -3,7 +3,7 @@ micronaut:
   application:
     name: ai-monitor-api
   server:
-    port: 8080
+    port: 8082
     host: 0.0.0.0  # Important: bind to all interfaces in container
     cors:
       enabled: true
@@ -42,3 +42,16 @@ endpoints:
   info:
     enabled: true
     sensitive: false
+
+kafka:
+    bootstrap-servers: kafka:9092
+    consumers:
+      default:
+        value-deserializer: io.micronaut.configuration.kafka.serde.JsonObjectDeserializer
+        value-type: aimonitor.micronaut.InferenceLog
+    consumer:
+        group-id: ai-monitor-group
+        auto-offset-reset: earliest
+        enable-auto-commit: true
+    producer:
+        acks: all
