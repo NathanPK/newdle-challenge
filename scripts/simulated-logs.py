@@ -43,7 +43,8 @@ def generate_inference_log():
         "modelId": model_id,
         "conversationId": conversation_id,
         "startTime": start_time.isoformat() + 'Z',
-        "endTime": end_time.isoformat() + 'Z'
+        "endTime": end_time.isoformat() + 'Z',
+        "index": random.randint(0, 1000),  # Random index for variety
     }
 
     return inference_log

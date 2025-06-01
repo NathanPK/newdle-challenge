@@ -27,7 +27,7 @@ class ModelController(
     }
 
     @Get("/{id}")
-    fun getModel(@PathVariable id: Long): HttpResponse<AIModel> {
+    fun getModel(@PathVariable id: String): HttpResponse<AIModel> {
         return try {
             val model = modelService.getModelById(id)
             if (model != null) {

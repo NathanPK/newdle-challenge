@@ -3,7 +3,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.allopen") version "1.9.22"
     id("com.google.devtools.ksp") version "1.9.22-1.0.17"
     id("io.micronaut.application") version "4.2.1"
-    id("io.micronaut.test-resources") version "4.2.1"
     id("io.micronaut.aot") version "4.2.1"
     id("com.github.johnrengelman.shadow") version "8.1.1"
 }
@@ -22,7 +21,8 @@ dependencies {
     implementation("io.micronaut:micronaut-jackson-databind")
     implementation("io.micronaut.kotlin:micronaut-kotlin-runtime")
     implementation("io.micronaut.sql:micronaut-jdbc-hikari")
-    runtimeOnly("org.postgresql:postgresql")
+    implementation("io.micronaut.data:micronaut-data-jdbc") // Added this
+    implementation("org.postgresql:postgresql:42.7.3")
     implementation("io.micronaut.security:micronaut-security-jwt")
     implementation("io.micronaut.security:micronaut-security")
     implementation("io.micronaut.validation:micronaut-validation:4.8.1")
@@ -33,11 +33,14 @@ dependencies {
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
     implementation("org.jetbrains.kotlin:kotlin-reflect:${kotlinVersion}")
+    implementation("io.micronaut.flyway:micronaut-flyway")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlinVersion}")
     implementation("io.micronaut.kafka:micronaut-kafka")
+
     ksp("io.micronaut:micronaut-http-validation")
     ksp("io.micronaut.data:micronaut-data-processor")
     ksp("io.micronaut.security:micronaut-security-annotations")
+
     testImplementation("io.kotest:kotest-assertions-core:5.8.1")
     testImplementation("io.micronaut:micronaut-http-client")
     testImplementation("io.micronaut.test:micronaut-test-junit5")
@@ -45,9 +48,10 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-engine")
     testImplementation("org.mockito:mockito-core")
     testImplementation("io.mockk:mockk:1.13.8")
-    testImplementation("org.testcontainers:junit-jupiter")
-    testImplementation("org.testcontainers:postgresql")
+    testImplementation("com.h2database:h2")
+
     runtimeOnly("org.yaml:snakeyaml")
+    runtimeOnly("org.flywaydb:flyway-database-postgresql")
 }
 
 application {
@@ -56,6 +60,14 @@ application {
 
 java {
     sourceCompatibility = JavaVersion.toVersion("21")
+}
+
+sourceSets {
+    test {
+        resources {
+            srcDir 'src/main/resources'
+        }
+    }
 }
 
 tasks {
@@ -210,10 +222,10 @@ tasks.register('dockerShell', Exec) {
 
 tasks.register("runWithCompose") {
     doLast {
-        Runtime.getRuntime().addShutdownHook(Thread {
-            "docker-compose -f compose.yml down".runCommand()
-        })
-        "docker-compose -f compose.yml up".runCommand()
+        Runtime.getRuntime().addShutdownHook(new Thread({
+            runCommand("docker-compose -f compose.yml down")
+        }))
+        runCommand("docker-compose -f compose.yml up")
     }
 }
 

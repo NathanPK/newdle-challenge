@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Test
 
-@MicronautTest // <1>
+@MicronautTest
 class HelloControllerTest(@Client("/") val client: HttpClient) { // <2>
 
     @Test

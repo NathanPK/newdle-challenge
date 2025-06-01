@@ -8,6 +8,7 @@ micronaut:
     cors:
       enabled: true
   security:
+    enabled: false
     authentication: bearer
     token:
       jwt:
@@ -20,14 +21,28 @@ micronaut:
         http-method: GET
         access:
           - isAnonymous()
+      - pattern: /api/v1/metrics/**
+        http-method: GET
+        access:
+          - isAnonymous()
 
-jpa:
+datasources:
   default:
-    properties:
-      hibernate:
-        hbm2ddl:
-          auto: create-drop
-        show_sql: false
+    url: jdbc:postgresql://db:5432/newdle_db
+    username: newdle_user
+    password: newdle_password
+    driverClassName: org.postgresql.Driver
+    # Retry config (Micronaut Data 4+)
+    schema-generate: NONE
+    dialect: POSTGRES
+    health:
+      enabled: true
+    # Retry settings
+    options:
+      connect-retry-attempts: 30
+      connect-retry-delay: 1000 # milliseconds
+    hikari:
+      initializationFailTimeout: -1
 
 logger:
   levels:
@@ -44,14 +59,20 @@ endpoints:
     sensitive: false
 
 kafka:
-    bootstrap-servers: kafka:9092
-    consumers:
-      default:
-        value-deserializer: io.micronaut.configuration.kafka.serde.JsonObjectDeserializer
-        value-type: aimonitor.micronaut.InferenceLog
-    consumer:
-        group-id: ai-monitor-group
-        auto-offset-reset: earliest
-        enable-auto-commit: true
-    producer:
-        acks: all
+  bootstrap-servers: kafka:9092
+  consumers:
+    default:
+      value-deserializer: io.micronaut.configuration.kafka.serde.JsonObjectDeserializer
+      value-type: aimonitor.micronaut.InferenceLog
+  consumer:
+      group-id: ai-monitor-group
+      auto-offset-reset: earliest
+      enable-auto-commit: true
+  producer:
+      acks: all
+
+flyway:
+  datasources:
+    default:
+      enabled: true
+      locations: classpath:migration

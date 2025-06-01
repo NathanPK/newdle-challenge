@@ -44,6 +44,17 @@ services:
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
 
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: newdle_db
+      POSTGRES_USER: newdle_user
+      POSTGRES_PASSWORD: newdle_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
   app:
     build:
       context: .
@@ -52,7 +63,9 @@ services:
     depends_on:
       - kafka
     ports:
-      - "8080:8080"
+      - "8082:8082"
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-    # Optionally mount your config or secrets here
+
+volumes:
+  pgdata:

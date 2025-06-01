@@ -30,5 +30,16 @@ class DefaultTest {
     fun testItWorks() {
         Assertions.assertTrue(application.isRunning)
     }
+}
 
+
+@MicronautTest
+class DebugTest {
+
+    @Test
+    fun debugDataSource() {
+        println("Environment: ${System.getenv()}")
+        println("System properties: ${System.getProperties().filter { it.key.toString().contains("test") }}")
+        println("Micronaut properties: ${System.getProperties().filter { it.key.toString().contains("micronaut") }}")
+    }
 }
