@@ -5,7 +5,7 @@ import jakarta.inject.Singleton
 import mu.KotlinLogging
 
 @Singleton
-class ModelService {
+open class ModelService {
     @Inject
     lateinit var dao: Dao
 
@@ -19,7 +19,7 @@ class ModelService {
         // This method should interact with the database to fetch a model by its ID
         // For now, returning null as a placeholder
         val metrics = dao.getMetricsByModelId(modelId)
-        val latency =  if (metrics.isNotEmpty()) {
+        val latency = if (metrics.isNotEmpty()) {
             metrics.map { it.latency }.average().toLong()
         } else {
             0L // Return 0 if no metrics are found
@@ -31,6 +31,11 @@ class ModelService {
             avgLatency = latency,
             totalLogs = count
         )
+    }
+
+    fun getModelTimeline(modelId: String): List<Metric> {
+        val metrics = dao.getMetricsByModelId(modelId)
+        return metrics
     }
 
     fun getModelLatency(modelId: String): Long {

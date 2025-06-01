@@ -2,11 +2,11 @@
 
 ## Runbook
 
-#### Setting up Kafka
-```bash
-# Creates a kafka instance with the 'logs' and 'metrics' topics
-./scripts/setup-kafka.sh
-```
+To start the project:
+./gradlew run
+
+When you're finished, run:
+docker-compose down
 
 ### Setting up the fake model scripts
 ```bash
